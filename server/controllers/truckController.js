@@ -31,21 +31,14 @@ exports.addTruck = async (req, res) => {
   }
 };
 
-// ➤ GET TRUCKS (🔥 FIXED)
+// ➤ GET TRUCKS 
 exports.getTrucks = async (req, res) => {
   try {
-    const trucks = await pool.query(`
-      SELECT * FROM trucks
-      WHERE id NOT IN (
-        SELECT truck_id FROM queue
-      )
-      ORDER BY id DESC
-    `);
-
+    const trucks = await pool.query("SELECT * FROM trucks ORDER BY id DESC");
     res.json(trucks.rows);
-
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch trucks" });
+    console.error("❌ GET TRUCKS ERROR:", err);
+    res.status(500).json({ error: err.message })
   }
 };
 
