@@ -20,13 +20,13 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "https://border-management-hybrid-system.vercel.app"
+      "https://border-management-hybrid-system.vercel.app",
+      "https://border-management-hybrid-system-nv01cuk8o.vercel.app"
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
   })
 );
-app.use(express.json());
 
 // Debugging Middleware
 if (process.env.NODE_ENV !== 'production') {
