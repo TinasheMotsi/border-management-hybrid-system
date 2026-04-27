@@ -5,30 +5,37 @@ const nodemailer = require('nodemailer');
 // Helper to build the Excel logic (Shared by both Download and Email)
 const buildExcelReport = async (hour) => {
   const result = await pool.query(
-    `SELECT tp.*, t.plate_number, t.driver_name, t.company 
-     FROM truck_progress tp
-     JOIN trucks t ON tp.truck_id = t.id
-     WHERE EXTRACT(HOUR FROM tp.start_time) = $1 
-     AND tp.start_time::date = CURRENT_DATE`,
-    [hour]
+    `SELECT 
+        t.id as truck_id, 
+        t.plate_number, 
+        t.driver_name, 
+        t.company, 
+        t.status as current_status,
+        tp.start_time,
+        tp.status as progress_status
+     FROM trucks t
+     LEFT JOIN truck_progress tp ON t.id = tp.truck_id
+     ORDER BY tp.start_time DESC NULLS LAST`
   );
 
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet(`Report-${hour}Hrs`);
+  // Label the sheet by the time the report was generated
+  const worksheet = workbook.addWorksheet(`Full-Audit-Log`);
 
-  worksheet.columns = [
-    { header: 'Truck ID', key: 'truck_id', width: 10 },
-    { header: 'Plate Number', key: 'plate_number', width: 15 },
-    { header: 'Driver', key: 'driver_name', width: 20 },
-    { header: 'Company', key: 'company', width: 20 },
-    { header: 'Status', key: 'status', width: 15 },
-    { header: 'Time Started', key: 'start_time', width: 25 }
-  ];
+worksheet.columns = [
+  { header: 'Truck ID', key: 'truck_id', width: 10 },
+  { header: 'Plate Number', key: 'plate_number', width: 15 },
+  { header: 'Driver', key: 'driver_name', width: 20 },
+  { header: 'Company', key: 'company', width: 20 },
+  { header: 'Overall Status', key: 'current_status', width: 15 }, 
+  { header: 'Stage Status', key: 'progress_status', width: 15 }, 
+  { header: 'Time Registered/Started', key: 'start_time', width: 25 }
+];
 
+  
   worksheet.addRows(result.rows);
   return workbook;
 };
-
 // 1. Function for Manual Download (Browser)
 exports.downloadReport = async (req, res) => {
   const { hour } = req.query;
