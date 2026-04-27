@@ -1,6 +1,6 @@
 const pool = require("../config/db");
 
-// ➤ ADD TRUCK
+// ➤ ADD TRUCK (No changes needed here, status defaults to 'pending' via schema)
 exports.addTruck = async (req, res) => {
   try {
     const { plate_number, driver_name, phone, company, cargo_type } = req.body;
@@ -31,47 +31,52 @@ exports.addTruck = async (req, res) => {
   }
 };
 
-// ➤ GET TRUCKS 
+// ➤ GET TRUCKS (FIXED: Added WHERE status = 'pending')
 exports.getTrucks = async (req, res) => {
   try {
-    const trucks = await pool.query("SELECT * FROM trucks ORDER BY id DESC");
+    // Only fetch trucks that haven't entered the live queue yet
+    const trucks = await pool.query(
+      "SELECT * FROM trucks WHERE status = 'pending' ORDER BY id DESC"
+    );
     res.json(trucks.rows);
   } catch (err) {
     console.error("❌ GET TRUCKS ERROR:", err);
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
 };
 
-// ➤ GET ONE
+// ➤ GET ONE (Standard fetch)
 exports.getTruckById = async (req, res) => {
   try {
     const { id } = req.params;
-
+    
+    // Check if the truck exists AND is still pending
     const truck = await pool.query(
-      "SELECT * FROM trucks WHERE id = $1",
+      "SELECT * FROM trucks WHERE id = $1 AND status = 'pending'", 
       [id]
     );
 
     if (truck.rows.length === 0) {
-      return res.status(404).json({ error: "Truck not found" });
+      // This protects your logic: if it's in the queue, the management page can't "find" it to edit it.
+      return res.status(404).json({ error: "Truck not found or already in processing" });
     }
 
     res.json(truck.rows[0]);
-
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch truck" });
   }
 };
-
-// ➤ DELETE
+// ➤ DELETE (Cleaning up relationships)
 exports.deleteTruck = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Remove from all related tables to prevent foreign key errors
+    await pool.query("DELETE FROM queue WHERE truck_id = $1", [id]);
     await pool.query("DELETE FROM truck_progress WHERE truck_id = $1", [id]);
     await pool.query("DELETE FROM trucks WHERE id = $1", [id]);
 
-    res.json({ message: "Truck removed" });
+    res.json({ message: "Truck removed from registry" });
 
   } catch (err) {
     console.error("DELETE ERROR:", err.message);
