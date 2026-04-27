@@ -16,11 +16,16 @@ const reportRoutes = require('./routes/reportRoutes');
 const app = express();
 
 // ✅ 1. Middleware
-app.use(cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "https://border-management-hybrid-system.vercel.app"
+    ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
-}));
+  })
+);
 app.use(express.json());
 
 // Debugging Middleware
